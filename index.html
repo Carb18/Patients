@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Pacientes - SIHOS (Prueba Local)</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-top: 20px; }
+        .alert { padding: 10px; margin-bottom: 15px; border-radius: 4px; font-weight: bold; }
+        .alert.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; }
+        .btn-primary { background-color: #007bff; }
+        .btn-success { background-color: #28a745; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-warning { background-color: #ffc107; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        #app-content { display: none; }
+        #login-form-container { max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login-form-container">
+            <h2>Iniciar Sesión</h2>
+            <div id="login-message" class="alert error" style="display: none;"></div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Correo Electrónico:</label>
+                    <input type="email" id="email" required value="admin@sihos.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Contraseña:</label>
+                    <input type="password" id="password" required value="1234567890">
+                </div>
+                <button type="submit" class="btn btn-primary">Ingresar</button>
+            </form>
+        </div>
+
+        <div id="app-content">
+            <header style="display: flex; justify-content: space-between; align-items: center;">
+                <h1>Gestión de Pacientes</h1>
+                <button id="logout-btn" class="btn btn-danger">Cerrar Sesión</button>
+            </header>
+            
+            <div id="app-message" class="alert" style="display: none;"></div>
+
+            <button id="show-form-btn" class="btn btn-success" onclick="showForm()">Registrar Nuevo Paciente</button>
+
+            <div id="form-container" style="margin-top: 20px; padding: 20px; border: 1px solid #ddd; display: none;">
+                <h2><span id="form-title">Crear</span> Paciente</h2>
+                <form id="paciente-form">
+                    <input type="hidden" id="paciente-id">
+                    <div class="form-group">
+                        <label for="f_nombre1">Primer Nombre (*):</label>
+                        <input type="text" id="f_nombre1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="f_apellido1">Primer Apellido (*):</label>
+                        <input type="text" id="f_apellido1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="f_documento">Nº Documento (*):</label>
+                        <input type="text" id="f_documento" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="f_email">Correo (*):</label>
+                        <input type="email" id="f_email" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="f_tipo_doc_id">Tipo Documento ID (*):</label>
+                        <input type="number" id="f_tipo_doc_id" required value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="f_genero_id">Género ID (*):</label>
+                        <input type="number" id="f_genero_id" required value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="f_depto_id">Departamento ID (*):</label>
+                        <input type="number" id="f_depto_id" required value="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="f_municipio_id">Municipio ID (*):</label>
+                        <input type="number" id="f_municipio_id" required value="1">
+                    </div>
+
+                    <button type="submit" class="btn btn-success"><span id="submit-text">Crear</span> Paciente</button>
+                    <button type="button" class="btn btn-primary" onclick="hideForm()">Cancelar</button>
+                </form>
+            </div>
+
+            <h2>Lista de Pacientes</h2>
+            <div id="pacientes-table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre Completo</th>
+                            <th>Documento</th>
+                            <th>Correo</th>
+                            <th>Departamento</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pacientes-body">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ESTA URL APUNTA AL SERVIDOR LOCAL DE LARAVEL
+        const API_BASE_URL = 'http://localhost:8000/api'; 
+
+        // --- MÓDULO DE AUTENTICACIÓN ---
+
+        function setAuthHeader() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                return true;
+            }
+            return false;
+        }
+
+        function checkAuthAndRender() {
+            if (setAuthHeader()) {
+                document.getElementById('login-form-container').style.display = 'none';
+                document.getElementById('app-content').style.display = 'block';
+                fetchPacientes(); 
+            } else {
+                document.getElementById('login-form-container').style.display = 'block';
+                document.getElementById('app-content').style.display = 'none';
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginMessage = document.getElementById('login-message');
+            loginMessage.style.display = 'none';
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/login`, { email, password });
+                
+                const token = response.data.token;
+                localStorage.setItem('auth_token', token);
+                
+                checkAuthAndRender();
+                showMessage('app-message', 'Login exitoso.', 'success');
+
+            } catch (error) {
+                const msg = error.response && error.response.data.message ? error.response.data.message : 'Error de conexión o credenciales incorrectas.';
+                loginMessage.textContent = msg;
+                loginMessage.className = 'alert error';
+                loginMessage.style.display = 'block';
+                console.error('Error de login:', error);
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await axios.post(`${API_BASE_URL}/logout`);
+            } catch (error) {
+                console.warn('Advertencia: El logout API falló, pero se limpiará la sesión local.');
+            } finally {
+                localStorage.removeItem('auth_token');
+                delete axios.defaults.headers.common['Authorization'];
+                checkAuthAndRender();
+                document.getElementById('login-message').textContent = 'Sesión cerrada.';
+                document.getElementById('login-message').className = 'alert success';
+                document.getElementById('login-message').style.display = 'block';
+            }
+        });
+
+        // --- UTILIDADES DE INTERFAZ Y CRUD ---
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `alert ${type}`;
+            element.style.display = 'block';
+            setTimeout(() => { element.style.display = 'none'; }, 5000);
+        }
+
+        function showForm(paciente = null) {
+            document.getElementById('form-container').style.display = 'block';
+            document.getElementById('show-form-btn').style.display = 'none';
+            document.getElementById('paciente-form').reset(); 
+            
+            if (paciente) {
+                document.getElementById('form-title').textContent = 'Editar';
+                document.getElementById('submit-text').textContent = 'Guardar Cambios';
+                document.getElementById('paciente-id').value = paciente.id;
+                
+                document.getElementById('f_nombre1').value = paciente.nombre1;
+                document.getElementById('f_apellido1').value = paciente.apellido1;
+                document.getElementById('f_documento').value = paciente.numero_documento;
+                document.getElementById('f_email').value = paciente.correo;
+                document.getElementById('f_tipo_doc_id').value = paciente.tipo_documento_id;
+                document.getElementById('f_genero_id').value = paciente.genero_id;
+                document.getElementById('f_depto_id').value = paciente.departamento_id;
+                document.getElementById('f_municipio_id').value = paciente.municipio_id;
+                
+            } else {
+                document.getElementById('form-title').textContent = 'Crear';
+                document.getElementById('submit-text').textContent = 'Crear';
+                document.getElementById('paciente-id').value = '';
+                document.getElementById('f_tipo_doc_id').value = 1;
+                document.getElementById('f_genero_id').value = 1;
+                document.getElementById('f_depto_id').value = 1;
+                document.getElementById('f_municipio_id').value = 1;
+            }
+        }
+
+        function hideForm() {
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('show-form-btn').style.display = 'block';
+        }
+
+        function getPacienteDataFromForm() {
+            return {
+                nombre1: document.getElementById('f_nombre1').value,
+                nombre2: '', 
+                apellido1: document.getElementById('f_apellido1').value,
+                apellido2: '',
+                numero_documento: document.getElementById('f_documento').value,
+                correo: document.getElementById('f_email').value,
+                tipo_documento_id: document.getElementById('f_tipo_doc_id').value,
+                genero_id: document.getElementById('f_genero_id').value,
+                departamento_id: document.getElementById('f_depto_id').value,
+                municipio_id: document.getElementById('f_municipio_id').value,
+            };
+        }
+
+        async function fetchPacientes() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/pacientes`);
+                renderPacientesTable(response.data.data); 
+            } catch (error) {
+                if (error.response && error.response.status === 401) {
+                    localStorage.removeItem('auth_token');
+                    checkAuthAndRender();
+                    showMessage('login-message', 'Sesión expirada. Por favor, ingrese de nuevo.', 'error');
+                    document.getElementById('login-message').style.display = 'block';
+                    return;
+                }
+                console.error('Error al obtener pacientes:', error);
+                showMessage('app-message', 'Error al cargar los pacientes. Revise la conexión del Backend.', 'error');
+            }
+        }
+
+        function renderPacientesTable(pacientes) {
+            const tbody = document.getElementById('pacientes-body');
+            tbody.innerHTML = ''; 
+
+            if (pacientes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No hay pacientes registrados.</td></tr>';
+                return;
+            }
+
+            pacientes.forEach(paciente => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = paciente.id;
+                row.insertCell().textContent = `${paciente.nombre1} ${paciente.apellido1}`;
+                row.insertCell().textContent = paciente.numero_documento;
+                row.insertCell().textContent = paciente.correo;
+                row.insertCell().textContent = paciente.departamento ? paciente.departamento.nombre : 'N/A';
+
+                const actionsCell = row.insertCell();
+                
+                const editBtn = document.createElement('button');
+                editBtn.textContent = 'Editar';
+                editBtn.className = 'btn btn-warning';
+                editBtn.onclick = () => showForm(paciente);
+                actionsCell.appendChild(editBtn);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Eliminar';
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.onclick = () => deletePaciente(paciente.id);
+                actionsCell.appendChild(deleteBtn);
+            });
+        }
+
+        document.getElementById('paciente-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = getPacienteDataFromForm();
+            const pacienteId = document.getElementById('paciente-id').value;
+            
+            let url = `${API_BASE_URL}/pacientes`;
+            let method = 'POST';
+            let successMessage = 'creado';
+
+            if (pacienteId) {
+                url = `${API_BASE_URL}/pacientes/${pacienteId}`;
+                method = 'PUT'; 
+                successMessage = 'actualizado';
+            }
+
+            try {
+                let response;
+                if (method === 'POST') {
+                    response = await axios.post(url, data);
+                } else {
+                    response = await axios.put(url, data); 
+                }
+
+                showMessage('app-message', `Paciente ${response.data.paciente.nombre1} ${successMessage} correctamente.`, 'success');
+                hideForm();
+                fetchPacientes(); 
+
+            } catch (error) {
+                let msg = 'Error desconocido al procesar la solicitud.';
+                if (error.response && error.response.status === 422) {
+                    msg = 'Error de validación: ' + Object.values(error.response.data.errors).flat().join(' ');
+                } else if (error.response && error.response.data && error.response.data.message) {
+                    msg = error.response.data.message;
+                }
+                showMessage('app-message', msg, 'error');
+                console.error('Error CRUD:', error.response);
+            }
+        });
+
+        async function deletePaciente(id) {
+            if (!confirm('¿Está seguro de que desea eliminar este paciente?')) {
+                return;
+            }
+
+            try {
+                await axios.delete(`${API_BASE_URL}/pacientes/${id}`);
+                showMessage('app-message', 'Paciente eliminado correctamente.', 'success');
+                fetchPacientes(); 
+            } catch (error) {
+                console.error('Error al eliminar paciente:', error);
+                showMessage('app-message', 'Error al eliminar el paciente. Consulte la consola.', 'error');
+            }
+        }
+
+        window.onload = checkAuthAndRender;
+    </script>
+</body>
+</html>
