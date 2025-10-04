@@ -41,7 +41,8 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
+            // Puedes comentar o eliminar si quitaste email_verified_at de la migración
+            //'email_verified_at' => 'datetime', 
             'password' => 'hashed',
         ];
     }
