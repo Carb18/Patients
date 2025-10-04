@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
             MunicipiosSeeder::class,
             TiposDocumentoSeeder::class,
             GenerosSeeder::class,
-            UsersSeeder::class,
             PacientesSeeder::class,
         ]);
     }
